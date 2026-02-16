@@ -32,9 +32,7 @@ def run_query(query, params=None, fetch=False):
 # --- Insert Record ---
 st.header("➕ Insert Record")
 with st.form("insert_form"):
-    id_val = st.number_input("ID", min_value=1, step=1)
     name = st.text_input("Patient Name")
-    timestamp = st.text_input("Timestamp")
     test_name = st.text_input("Test Name")
     result = st.number_input("Result", step=0.01)
     unit = st.text_input("Unit")
@@ -43,8 +41,8 @@ with st.form("insert_form"):
     submitted = st.form_submit_button("Insert")
     if submitted:
         run_query(
-            "INSERT INTO blood_reports (`id`, `name`, `timestamp`, `test_name`, `result`, `unit`, `ref_range`, `flag`) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
-            (id_val, name, timestamp, test_name, result, unit, ref_range, flag)
+            "INSERT INTO blood_reports (`name`, `test_name`, `result`, `unit`, `ref_range`, `flag`) VALUES (%s,%s,%s,%s,%s,%s)",
+            (name, test_name, result, unit, ref_range, flag)
         )
         st.success("✅ Record inserted successfully!")
 
