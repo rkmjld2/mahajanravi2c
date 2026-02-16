@@ -41,7 +41,7 @@ with st.form("insert_form"):
     submitted = st.form_submit_button("Insert")
     if submitted:
         run_query(
-            "INSERT INTO blood_reports (`name`, `test_name`, `result`, `unit`, `ref_range`, `flag`) VALUES (%s,%s,%s,%s,%s,%s)",
+            "INSERT INTO blood_reports (name, test_name, result, unit, ref_range, flag) VALUES (%s,%s,%s,%s,%s,%s)",
             (name, test_name, result, unit, ref_range, flag)
         )
         st.success("✅ Record inserted successfully!")
