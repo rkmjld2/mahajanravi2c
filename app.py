@@ -42,10 +42,11 @@ with st.form("insert_form"):
     flag = st.text_input("Flag")
     submitted = st.form_submit_button("Insert")
     if submitted:
- run_query(
+run_query(
     "INSERT INTO blood_reports (`id`, `name`, `timestamp`, `test_name`, `result`, `unit`, `ref_range`, `flag`) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
     (id_val, name, timestamp, test_name, result, unit, ref_range, flag)
 )
+     
  
         st.success("✅ Record inserted successfully!")
 
@@ -77,4 +78,5 @@ delete_id = st.number_input("Enter ID to delete", min_value=1, step=1, key="dele
 if st.button("Delete"):
     run_query("DELETE FROM blood_reports WHERE id=%s", (delete_id,))
     st.success("✅ Record deleted successfully!")
+
 
