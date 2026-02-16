@@ -1,12 +1,10 @@
 import streamlit as st
 import mysql.connector
 import tempfile
-
-# LangChain imports
-from langchain.chains.retrieval_qa import RetrievalQA
-from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-
+from langchain.chains import RetrievalQA
+from langchain.vectorstores import FAISS
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.llms import OpenAI
 
 st.title("Blood Reports Database Manager + RAG Analysis")
 
@@ -98,4 +96,3 @@ if st.button("Run RAG Analysis"):
 
     st.subheader("🔎 AI Recommendations")
     st.write(answer)
-
