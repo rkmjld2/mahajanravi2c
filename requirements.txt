@@ -1,10 +1,9 @@
 streamlit
 mysql-connector-python
-groq
-faiss-cpu
-numpy
-langchain-community
-openai
 langchain
+langchain-community
+faiss-cpu
+openai
+
 
 
