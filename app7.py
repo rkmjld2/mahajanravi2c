@@ -8,6 +8,9 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 
 
+
+
+
 st.title("Blood Reports Database Manager + RAG Analysis")
 
 # --- TiDB Config ---
@@ -98,4 +101,5 @@ if st.button("Run RAG Analysis"):
 
     st.subheader("🔎 AI Recommendations")
     st.write(answer)
+
 
