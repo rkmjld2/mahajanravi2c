@@ -3,11 +3,11 @@ import mysql.connector
 import tempfile
 
 # LangChain imports (modern structure)
-from langchain.chains import RetrievalQA
+from langchain_classic.chains import RetrievalQA
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 
-
+#from langchain_classic.chains import create_retrieval_chain
 
 
 
@@ -101,5 +101,6 @@ if st.button("Run RAG Analysis"):
 
     st.subheader("🔎 AI Recommendations")
     st.write(answer)
+
 
 
