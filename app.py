@@ -1,8 +1,12 @@
 import streamlit as st
 import mysql.connector
 import tempfile
+from langchain.chains import RetrievalQA
+from langchain.vectorstores import FAISS
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.llms import OpenAI
 
-st.title("Blood Reports Database Manager")
+st.title("Blood Reports Database Manager + RAG Analysis")
 
 # --- TiDB Config ---
 db_config = {
@@ -46,31 +50,49 @@ with st.form("insert_form"):
         )
         st.success("✅ Record inserted successfully!")
 
-# --- Search Records ---
-st.header("🔍 Search Records")
-search_test = st.text_input("Search by test name")
-if search_test:
-    rows = run_query("SELECT * FROM blood_reports WHERE test_name LIKE %s", (f"%{search_test}%",), fetch=True)
+# --- Search by Name + Date Range ---
+st.header("🔍 Search by Name and Date Range")
+search_name = st.text_input("Enter Patient Name")
+start_date = st.date_input("Start Date")
+end_date = st.date_input("End Date")
+if st.button("Search Records"):
+    rows = run_query(
+        "SELECT * FROM blood_reports WHERE name=%s AND timestamp BETWEEN %s AND %s",
+        (search_name, start_date, end_date),
+        fetch=True
+    )
     st.write(rows)
 
-# --- Edit Record ---
-st.header("✏️ Edit Record")
-edit_id = st.number_input("Enter ID to edit", min_value=1, step=1)
-if edit_id:
-    rows = run_query("SELECT * FROM blood_reports WHERE id=%s", (edit_id,), fetch=True)
-    if rows:
-        row = rows[0]
-        with st.form("edit_form"):
-            new_result = st.number_input("New Result", value=row["result"], step=0.01)
-            new_flag = st.text_input("New Flag", value=row["flag"])
-            update = st.form_submit_button("Update")
-            if update:
-                run_query("UPDATE blood_reports SET result=%s, flag=%s WHERE id=%s", (new_result, new_flag, edit_id))
-                st.success("✅ Record updated successfully!")
+# --- Display All Records ---
+st.header("📋 All Records")
+if st.button("Show All Records"):
+    rows = run_query("SELECT * FROM blood_reports", fetch=True)
+    st.write(rows)
 
-# --- Delete Record ---
-st.header("🗑️ Delete Record")
-delete_id = st.number_input("Enter ID to delete", min_value=1, step=1, key="delete")
-if st.button("Delete"):
-    run_query("DELETE FROM blood_reports WHERE id=%s", (delete_id,))
-    st.success("✅ Record deleted successfully!")
+# --- RAG Analysis ---
+st.header("🧠 RAG: Abnormal Report Analysis & Recommendations")
+
+if st.button("Run RAG Analysis"):
+    # Fetch all records
+    rows = run_query("SELECT * FROM blood_reports", fetch=True)
+
+    # Convert rows into text docs
+    docs = []
+    for r in rows:
+        text = f"Patient {r['name']} | Test: {r['test_name']} | Result: {r['result']} {r['unit']} | Ref Range: {r['ref_range']} | Flag: {r['flag']} | Date: {r['timestamp']}"
+        docs.append(text)
+
+    # Build FAISS vector store
+    embeddings = OpenAIEmbeddings(openai_api_key=st.secrets["openai"]["api_key"])
+    vectorstore = FAISS.from_texts(docs, embeddings)
+
+    # Create RAG chain
+    llm = OpenAI(openai_api_key=st.secrets["openai"]["api_key"])
+    qa = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
+
+    # Ask the model to find abnormal reports
+    query = "Identify abnormal blood test reports and provide medical recommendations."
+    answer = qa.run(query)
+
+    st.subheader("🔎 AI Recommendations")
+    st.write(answer)
