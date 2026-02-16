@@ -87,7 +87,7 @@ if st.button("Run RAG Analysis"):
     vectorstore = FAISS.from_texts(docs, embeddings)
 
     # Create RAG chain
-    llm = OpenAI(openai_api_key=st.secrets["openai"]["api_key"])
+    llm = ChatOpenAI(model="gpt-4", api_key=st.secrets["openai"]["api_key"])
     qa = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
 
     # Ask the model to find abnormal reports
