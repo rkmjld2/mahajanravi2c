@@ -119,7 +119,7 @@ if st.button("Search"):
             st.info("No records found for this exact name and date range.")
     else:
         st.warning("Please enter patient name and both dates.")
- ── Show All Records ────────────────────────────────────────────────
+# ── Show All Records ────────────────────────────────────────────────
 st.header("📋 All Records")
 if st.button("Show All Records"):
     rows = run_query("SELECT * FROM blood_reports ORDER BY timestamp DESC", fetch=True)
@@ -200,3 +200,4 @@ Context (reports):
                 st.markdown(result["answer"])
             except Exception as e:
                 st.error(f"Error during analysis: {str(e)}")
+
