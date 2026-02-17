@@ -8,8 +8,6 @@ from langchain.vectorstores import FAISS
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.llms import OpenAI
 
-
-
 st.title("Blood Reports Database Manager + RAG Analysis")
 
 # --- TiDB Config ---
@@ -91,8 +89,6 @@ if st.button("Run RAG Analysis"):
     vectorstore = FAISS.from_texts(docs, embeddings)
 
     # Create RAG chain
-    #llm = OpenAI(openai_api_key=st.secrets["openai"]["api_key"])
-    #qa = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
     llm = OpenAI(openai_api_key=st.secrets["openai"]["api_key"])
     qa = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
 
@@ -102,6 +98,3 @@ if st.button("Run RAG Analysis"):
 
     st.subheader("🔎 AI Recommendations")
     st.write(answer)
-
-
-
