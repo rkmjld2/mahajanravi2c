@@ -74,26 +74,32 @@ with st.form("insert_form"):
         else:
             st.warning("Please fill at least Patient Name and Test Name.")
 
+
 # ── Search Records ──────────────────────────────────────────────────
 st.header("🔍 Search Records")
 col1, col2, col3 = st.columns([3, 2, 2])
 with col1:
     search_name = st.text_input("Patient Name (partial match OK)")
 with col2:
-    start_date = st.date_input("From Date")
+    start_date = st.date_input("From Date", format="YYYY-MM-DD")
 with col3:
-    end_date = st.date_input("To Date")
+    end_date = st.date_input("To Date", format="YYYY-MM-DD")
 
 if st.button("Search"):
-    if search_name:
+    if search_name and start_date and end_date:
+        # Convert end_date to include the full day (up to 23:59:59)
+        from datetime import timedelta
+        end_date_inclusive = end_date + timedelta(days=1)
+
         rows = run_query(
             """
             SELECT * FROM blood_reports 
             WHERE name LIKE %s 
-            AND timestamp BETWEEN %s AND %s
+            AND timestamp >= %s 
+            AND timestamp < %s
             ORDER BY timestamp DESC
             """,
-            (f"%{search_name}%", start_date, end_date),
+            (f"%{search_name}%", start_date, end_date_inclusive),
             fetch=True,
         )
         if rows:
@@ -101,8 +107,7 @@ if st.button("Search"):
         else:
             st.info("No matching records found.")
     else:
-        st.warning("Please enter a patient name to search.")
-
+        st.warning("Please enter patient name and both dates.")
 # ── Show All Records ────────────────────────────────────────────────
 st.header("📋 All Records")
 if st.button("Show All Records"):
@@ -178,5 +183,6 @@ Context (reports):
                 st.markdown(result["answer"])
             except Exception as e:
                 st.error(f"Error during RAG analysis: {e}")
+
 
 
