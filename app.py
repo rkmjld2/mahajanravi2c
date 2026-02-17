@@ -3,9 +3,10 @@ import mysql.connector
 import tempfile
 
 # LangChain imports (correct for pinned versions)
-from langchain.chains import RetrievalQA
+
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain.chains import RetrievalQA
 
 
 st.title("Blood Reports Database Manager + RAG Analysis")
@@ -98,4 +99,5 @@ if st.button("Run RAG Analysis"):
 
     st.subheader("🔎 AI Recommendations")
     st.write(answer)
+
 
