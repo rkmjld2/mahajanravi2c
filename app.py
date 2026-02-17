@@ -3,16 +3,13 @@ import mysql.connector
 import tempfile
 from datetime import datetime
 
-
-# Use this instead (from langchain-classic):
+# ── Modern LangChain imports ────────────────────────────────────────
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings                 # ← embeddings (Groq has no embeddings)
+from langchain_groq import ChatGroq                           # ← NEW: Groq LLM
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
-
-# These stay the same:
-from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-
 
 st.set_page_config(page_title="Blood Reports Manager + RAG", layout="wide")
 
@@ -113,7 +110,7 @@ if st.button("Show All"):
 st.header("🧠 RAG: Abnormal Reports & Recommendations")
 
 if st.button("Run RAG Analysis (may take 5–20 seconds)"):
-    with st.spinner("Fetching records and building temporary vector store..."):
+    with st.spinner("Fetching records → embedding → vector store → Groq analysis..."):
         rows = run_query("SELECT * FROM blood_reports", fetch=True)
 
         if not rows:
@@ -128,16 +125,16 @@ if st.button("Run RAG Analysis (may take 5–20 seconds)"):
                     f"Flag: {r['flag']} | Date: {r.get('timestamp', '—')}"
                 )
 
-            # Embed + FAISS (happens only here → fast startup)
+            # Embed + FAISS (still using OpenAI embeddings – Groq has none)
             embeddings = OpenAIEmbeddings(openai_api_key=st.secrets["openai"]["api_key"])
             vectorstore = FAISS.from_texts(texts, embeddings)
             retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
 
-            # LLM
-            llm = ChatOpenAI(
-                model="gpt-4o-mini",
+            # LLM = Groq (fast & cheap)
+            llm = ChatGroq(
+                model="llama-3.1-70b-versatile",          # or "mixtral-8x7b-32768", "llama3-70b-8192"
                 temperature=0.25,
-                openai_api_key=st.secrets["openai"]["api_key"],
+                groq_api_key=st.secrets["groq"]["api_key"],
             )
 
             # Prompt
@@ -154,7 +151,7 @@ Context:
                 [("system", system_prompt), ("human", "{input}")]
             )
 
-            # Chains
+            # Chains (using langchain-classic compatibility)
             combine_docs_chain = create_stuff_documents_chain(llm, prompt)
             rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
 
@@ -162,6 +159,5 @@ Context:
             query = "Identify abnormal blood test results and suggest general next steps or possible interpretations."
             result = rag_chain.invoke({"input": query})
 
-            st.subheader("AI Analysis & Recommendations")
+            st.subheader("AI Analysis & Recommendations (powered by Groq)")
             st.markdown(result["answer"])
-
