@@ -5,6 +5,7 @@ langchain-community
 langchain-openai
 faiss-cpu
 openai
+langchain-groq==1.1.2
 
 
 
