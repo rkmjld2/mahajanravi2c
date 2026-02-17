@@ -3,12 +3,16 @@ import mysql.connector
 import tempfile
 from datetime import datetime
 
-# ── Modern LangChain imports ────────────────────────────────────────
+
+# Use this instead (from langchain-classic):
+from langchain_classic.chains import create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+
+# These stay the same:
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
+
 
 st.set_page_config(page_title="Blood Reports Manager + RAG", layout="wide")
 
@@ -160,3 +164,4 @@ Context:
 
             st.subheader("AI Analysis & Recommendations")
             st.markdown(result["answer"])
+
