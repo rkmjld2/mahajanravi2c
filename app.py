@@ -144,7 +144,7 @@ if st.button("Run RAG Analysis (may take 10–30s first time)"):
 
             # Groq LLM
             llm = ChatGroq(
-                model="llama-3.1-70b-versatile",
+                model="llama-3.3-70b-versatile",
                 temperature=0.25,
                 groq_api_key=st.secrets["groq"]["api_key"],
             )
@@ -178,4 +178,5 @@ Context (reports):
                 st.markdown(result["answer"])
             except Exception as e:
                 st.error(f"Error during RAG analysis: {e}")
+
 
