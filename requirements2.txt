@@ -1,9 +1,9 @@
 streamlit>=1.38.0
 mysql-connector-python>=9.0.0
 langchain>=1.0.0
-langchain-openai>=0.2.0               # for OpenAIEmbeddings
+langchain-openai>=0.2.0
 langchain-community>=0.3.0
-langchain-groq>=0.2.0                 # ← ADD THIS (or >=1.0.0 if you want latest)
-langchain-classic>=1.0.0              # if you're still using create_retrieval_chain etc. from classic
+langchain-groq>=0.2.0          # ← THIS is the correct package name (hyphen!)
+langchain-classic>=1.0.0
 faiss-cpu>=1.8.0
-openai>=1.0.0                         # needed for OpenAIEmbeddings
+openai>=1.0.0
