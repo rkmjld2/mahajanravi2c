@@ -126,7 +126,7 @@ if st.button("Show All Records"):
     else:
         st.info("No records in the database yet.")
 
-# ── RAG Analysis (uses searched records when available) ─────────────
+# ── RAG Analysis (uses searched records + asks for common meds) ─────
 st.header("🧠 RAG: Abnormal Reports & Recommendations")
 
 if st.button("Run RAG Analysis (may take 10–30s first time)"):
@@ -167,18 +167,28 @@ if st.button("Run RAG Analysis (may take 10–30s first time)"):
             # Groq LLM
             llm = ChatGroq(
                 model="llama-3.3-70b-versatile",
-                temperature=0.25,
+                temperature=0.3,  # slightly higher for more explanatory output
                 groq_api_key=st.secrets["groq"]["api_key"],
             )
 
-            # Prompt
-            system_prompt = """You are a helpful assistant analyzing blood test results.
-Use only the following patient blood report excerpts.
-Identify abnormal values (flagged or clearly outside reference range).
-Provide general educational insights and possible next steps.
-Always end with: "This is not medical advice — consult a qualified physician."
+            # Updated Prompt – now asks for common meds + strong disclaimer
+            system_prompt = """You are a helpful educational assistant summarizing blood test results.
+Use ONLY the provided report excerpts below.
+Your response MUST include:
 
-Context (reports):
+1. Identification of clearly abnormal values (where flag is 'High'/'Low' or result is outside ref range).
+2. For EACH abnormal test: very brief general interpretation.
+3. For EACH abnormal test: common lifestyle recommendations (diet, exercise, habits) AND typical/commonly associated medicines, supplements or treatments (e.g. statins for high cholesterol, iron for low hemoglobin, vitamin D for deficiency, etc.).
+
+VERY IMPORTANT – ALWAYS INCLUDE THIS EXACT DISCLAIMER AT THE BEGINNING AND END OF YOUR RESPONSE:
+"THIS IS GENERAL EDUCATIONAL INFORMATION ONLY – NOT MEDICAL ADVICE, NOT A DIAGNOSIS, NOT A TREATMENT PLAN. 
+DO NOT TAKE ANY MEDICATION OR SUPPLEMENT BASED ON THIS OUTPUT. 
+CONSULT A QUALIFIED DOCTOR FOR PERSONALIZED INTERPRETATION, DIAGNOSIS AND PRESCRIPTION."
+
+Never recommend specific doses, brands or starting/stopping medicines.
+Keep response clear, structured and concise.
+
+Context (blood reports):
 {context}"""
 
             prompt = ChatPromptTemplate.from_messages(
@@ -190,7 +200,7 @@ Context (reports):
             rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
 
             # Run
-            query = "Identify any abnormal blood test results and provide general recommendations or interpretations."
+            query = "Identify abnormal blood test results, explain briefly, list common general recommendations and typical medicines/supplements for each abnormal parameter."
             try:
                 result = rag_chain.invoke({"input": query})
                 st.subheader(f"🔎 AI Analysis (based on {source_info})")
