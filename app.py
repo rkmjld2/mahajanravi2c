@@ -2,11 +2,12 @@ import streamlit as st
 import mysql.connector
 import tempfile
 
-# LangChain imports (correct for pinned versions)
+# LangChain Classic imports
+from langchain.chains.retrieval_qa.base import RetrievalQA
+from langchain.vectorstores import FAISS
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.llms import OpenAI
 
-from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.chains import RetrievalQA
 
 
 st.title("Blood Reports Database Manager + RAG Analysis")
@@ -90,6 +91,8 @@ if st.button("Run RAG Analysis"):
     vectorstore = FAISS.from_texts(docs, embeddings)
 
     # Create RAG chain
+    #llm = OpenAI(openai_api_key=st.secrets["openai"]["api_key"])
+    #qa = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
     llm = OpenAI(openai_api_key=st.secrets["openai"]["api_key"])
     qa = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
 
@@ -99,5 +102,6 @@ if st.button("Run RAG Analysis"):
 
     st.subheader("🔎 AI Recommendations")
     st.write(answer)
+
 
 
