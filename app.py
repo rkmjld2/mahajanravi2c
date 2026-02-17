@@ -178,3 +178,4 @@ Context (reports):
                 st.markdown(result["answer"])
             except Exception as e:
                 st.error(f"Error during RAG analysis: {e}")
+
