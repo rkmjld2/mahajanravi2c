@@ -3,7 +3,7 @@ import mysql.connector
 import tempfile
 from datetime import datetime, timedelta
 import pandas as pd
-import io
+from io import StringIO
 
 # ── LangChain imports ───────────────────────────────────────────────
 from langchain_community.vectorstores import FAISS
@@ -118,7 +118,19 @@ if st.button("Search"):
     else:
         st.warning("Please enter patient name and both dates.")
 
-# ── Show All Records + Download ─────────────────────────────────────
+    # Download button for searched records
+    if st.session_state.get("last_search_rows") and st.session_state.last_search_rows:
+        df_search = pd.DataFrame(st.session_state.last_search_rows)
+        csv_search = df_search.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Searched Records (CSV)",
+            data=csv_search,
+            file_name=f"blood_reports_{st.session_state.last_search_name}.csv",
+            mime="text/csv",
+            key="download_searched"
+        )
+
+# ── Show All Records ────────────────────────────────────────────────
 st.header("📋 All Records")
 if st.button("Show All Records"):
     rows = run_query("SELECT * FROM blood_reports ORDER BY timestamp DESC", fetch=True)
@@ -126,23 +138,25 @@ if st.button("Show All Records"):
         df_all = pd.DataFrame(rows)
         st.dataframe(df_all)
 
-        # Download All Records as CSV
+        # Download button for all records
         csv_all = df_all.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 Download All Records as CSV",
+            label="📥 Download All Records (CSV)",
             data=csv_all,
-            file_name=f"all_blood_reports_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            file_name="blood_reports_all.csv",
             mime="text/csv",
+            key="download_all"
         )
     else:
         st.info("No records in the database yet.")
 
-# ── RAG Analysis (with download of result) ──────────────────────────
+# ── RAG Analysis ────────────────────────────────────────────────────
 st.header("🧠 RAG: Abnormal Reports & Recommendations")
 
 if st.button("Run RAG Analysis (may take 10–30s first time)"):
     with st.spinner("Preparing records + building vector store + analyzing..."):
         
+        # Decide which records to analyze
         if st.session_state.get("last_search_rows") is not None and st.session_state.last_search_rows:
             rows = st.session_state.last_search_rows
             source_info = f"filtered search results for exact name '{st.session_state.last_search_name}'"
@@ -155,6 +169,7 @@ if st.button("Run RAG Analysis (may take 10–30s first time)"):
         else:
             st.info(f"Analyzing {len(rows)} record(s) from: {source_info}")
 
+            # Prepare document texts
             texts = []
             for r in rows:
                 texts.append(
@@ -163,6 +178,7 @@ if st.button("Run RAG Analysis (may take 10–30s first time)"):
                     f"Flag: {r['flag']} | Date: {r.get('timestamp', 'N/A')}"
                 )
 
+            # Embeddings
             embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
                 model_kwargs={"device": "cpu"},
@@ -172,12 +188,14 @@ if st.button("Run RAG Analysis (may take 10–30s first time)"):
             vectorstore = FAISS.from_texts(texts, embeddings)
             retriever = vectorstore.as_retriever(search_kwargs={"k": min(5, len(texts))})
 
+            # LLM
             llm = ChatGroq(
                 model="llama-3.3-70b-versatile",
                 temperature=0.3,
                 groq_api_key=st.secrets["groq"]["api_key"],
             )
 
+            # Updated prompt with medicine suggestions
             system_prompt = """You are a helpful educational assistant summarizing blood test results.
 Use ONLY the provided report excerpts below.
 Your response MUST include:
@@ -212,26 +230,14 @@ Context (blood reports):
                 st.subheader(f"🔎 AI Analysis (based on {source_info})")
                 st.markdown(answer_text)
 
-                # Download RAG output as Markdown
-                md_data = answer_text.encode('utf-8')
+                # Download RAG result as text
                 st.download_button(
-                    label="📥 Download RAG Analysis as Markdown",
-                    data=md_data,
-                    file_name=f"rag_analysis_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
-                    mime="text/markdown",
+                    label="📥 Download RAG Analysis Result (TXT)",
+                    data=answer_text,
+                    file_name="rag_analysis_abnormal_reports.txt",
+                    mime="text/plain",
+                    key="download_rag"
                 )
 
             except Exception as e:
                 st.error(f"Error during analysis: {str(e)}")
-
-# ── Download Searched Records (if search done) ──────────────────────
-if st.session_state.get("last_search_rows") and st.session_state.last_search_rows:
-    st.subheader("Download Searched Records")
-    df_search = pd.DataFrame(st.session_state.last_search_rows)
-    csv_search = df_search.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Download Searched Records as CSV",
-        data=csv_search,
-        file_name=f"searched_blood_reports_{st.session_state.last_search_name}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-        mime="text/csv",
-    )
