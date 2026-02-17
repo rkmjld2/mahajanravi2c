@@ -76,39 +76,50 @@ with st.form("insert_form"):
 
 
 # ── Search Records ──────────────────────────────────────────────────
+# ── Search Records ──────────────────────────────────────────────────
 st.header("🔍 Search Records")
 col1, col2, col3 = st.columns([3, 2, 2])
 with col1:
-    search_name = st.text_input("Patient Name (partial match OK)")
+    search_name = st.text_input("Patient Name (exact match)", key="search_name_exact")
 with col2:
     start_date = st.date_input("From Date", format="YYYY-MM-DD")
 with col3:
     end_date = st.date_input("To Date", format="YYYY-MM-DD")
 
+# We'll store the last search results in session state
+if "last_search_rows" not in st.session_state:
+    st.session_state.last_search_rows = None
+    st.session_state.last_search_name = None
+
 if st.button("Search"):
     if search_name and start_date and end_date:
-        # Convert end_date to include the full day (up to 23:59:59)
+        # Make end date inclusive (full day)
         from datetime import timedelta
         end_date_inclusive = end_date + timedelta(days=1)
 
         rows = run_query(
             """
             SELECT * FROM blood_reports 
-            WHERE name LIKE %s 
+            WHERE name = %s 
             AND timestamp >= %s 
             AND timestamp < %s
             ORDER BY timestamp DESC
             """,
-            (f"%{search_name}%", start_date, end_date_inclusive),
+            (search_name.strip(), start_date, end_date_inclusive),
             fetch=True,
         )
+        
         if rows:
+            st.session_state.last_search_rows = rows
+            st.session_state.last_search_name = search_name.strip()
             st.dataframe(rows)
+            st.success(f"Found {len(rows)} record(s) for exact name: {search_name}")
         else:
-            st.info("No matching records found.")
+            st.session_state.last_search_rows = []
+            st.info("No records found for this exact name and date range.")
     else:
         st.warning("Please enter patient name and both dates.")
-# ── Show All Records ────────────────────────────────────────────────
+ ── Show All Records ────────────────────────────────────────────────
 st.header("📋 All Records")
 if st.button("Show All Records"):
     rows = run_query("SELECT * FROM blood_reports ORDER BY timestamp DESC", fetch=True)
@@ -118,15 +129,25 @@ if st.button("Show All Records"):
         st.info("No records in the database yet.")
 
 # ── RAG Analysis Section ────────────────────────────────────────────
+# ── RAG Analysis Section ────────────────────────────────────────────
 st.header("🧠 RAG: Abnormal Reports & Recommendations")
 
 if st.button("Run RAG Analysis (may take 10–30s first time)"):
-    with st.spinner("Loading data + building vector store + analyzing with Groq..."):
-        rows = run_query("SELECT * FROM blood_reports", fetch=True)
+    with st.spinner("Preparing records + building vector store + analyzing..."):
+        
+        # Decide which records to analyze
+        if st.session_state.get("last_search_rows") is not None:
+            rows = st.session_state.last_search_rows
+            source_info = f"filtered search results for '{st.session_state.last_search_name}'"
+        else:
+            rows = run_query("SELECT * FROM blood_reports", fetch=True)
+            source_info = "all records in database (no search filter applied)"
 
         if not rows:
-            st.warning("No blood reports found in the database.")
+            st.warning("No records available to analyze.")
         else:
+            st.info(f"Analyzing {len(rows)} record(s) from: {source_info}")
+
             # Prepare document texts
             texts = []
             for r in rows:
@@ -136,25 +157,24 @@ if st.button("Run RAG Analysis (may take 10–30s first time)"):
                     f"Flag: {r['flag']} | Date: {r.get('timestamp', 'N/A')}"
                 )
 
-            # Free local embeddings (no API key needed)
+            # Free local embeddings
             embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
                 model_kwargs={"device": "cpu"},
                 encode_kwargs={"normalize_embeddings": True},
             )
 
-            # Create vector store
             vectorstore = FAISS.from_texts(texts, embeddings)
-            retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+            retriever = vectorstore.as_retriever(search_kwargs={"k": min(5, len(texts))})
 
-            # Groq LLM
+            # Groq LLM – using current valid model
             llm = ChatGroq(
                 model="llama-3.3-70b-versatile",
                 temperature=0.25,
                 groq_api_key=st.secrets["groq"]["api_key"],
             )
 
-            # Prompt template
+            # Prompt
             system_prompt = """You are a helpful assistant analyzing blood test results.
 Use only the following patient blood report excerpts.
 Identify abnormal values (flagged or clearly outside reference range).
@@ -165,24 +185,18 @@ Context (reports):
 {context}"""
 
             prompt = ChatPromptTemplate.from_messages(
-                [
-                    ("system", system_prompt),
-                    ("human", "{input}"),
-                ]
+                [("system", system_prompt), ("human", "{input}")]
             )
 
-            # Build RAG chain
+            # Build chain
             combine_docs_chain = create_stuff_documents_chain(llm, prompt)
             rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
 
-            # Execute query
+            # Run
             query = "Identify any abnormal blood test results and provide general recommendations or interpretations."
             try:
                 result = rag_chain.invoke({"input": query})
-                st.subheader("🔎 AI Analysis & Recommendations (via Groq)")
+                st.subheader(f"🔎 AI Analysis (based on {source_info})")
                 st.markdown(result["answer"])
             except Exception as e:
-                st.error(f"Error during RAG analysis: {e}")
-
-
-
+                st.error(f"Error during analysis: {str(e)}")
