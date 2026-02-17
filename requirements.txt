@@ -1,11 +1,12 @@
-streamlit
-mysql-connector-python
-langchain
-langchain-community
-langchain-openai
-faiss-cpu
-openai
-langchain-groq==1.1.2
+streamlit>=1.38.0
+mysql-connector-python>=9.0.0
+langchain>=1.0.0
+langchain-community>=0.3.0
+langchain-classic>=1.0.0
+langchain-groq>=1.1.2
+faiss-cpu>=1.8.0
+sentence-transformers>=3.0.0
+torch>=2.0.0
 
 
 
