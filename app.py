@@ -1,82 +1,19 @@
-import streamlit as st
-import mysql.connector
-import tempfile
-
-# LangChain Classic imports
-from langchain.chains.retrieval_qa.base import RetrievalQA
-from langchain.vectorstores import FAISS
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.llms import OpenAI
-
-st.title("Blood Reports Database Manager + RAG Analysis")
-
-# --- TiDB Config ---
-db_config = {
-    "host": st.secrets["tidb"]["host"],
-    "port": st.secrets["tidb"]["port"],
-    "user": st.secrets["tidb"]["user"],
-    "password": st.secrets["tidb"]["password"],
-    "database": st.secrets["tidb"]["database"],
-}
-
-# Write SSL certificate string from secrets to a temporary file
-with tempfile.NamedTemporaryFile(delete=False) as tmp:
-    tmp.write(st.secrets["tidb"]["ssl_ca"].encode())
-    db_config["ssl_ca"] = tmp.name
-
-# --- Helper Function ---
-def run_query(query, params=None, fetch=False):
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(query, params or ())
-    result = cursor.fetchall() if fetch else None
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return result
-
-# --- Insert Record ---
-st.header("➕ Insert Record")
-with st.form("insert_form"):
-    name = st.text_input("Patient Name")
-    test_name = st.text_input("Test Name")
-    result = st.number_input("Result", step=0.01)
-    unit = st.text_input("Unit")
-    ref_range = st.text_input("Reference Range")
-    flag = st.text_input("Flag")
-    submitted = st.form_submit_button("Insert")
-    if submitted:
-        run_query(
-            "INSERT INTO blood_reports (name, test_name, result, unit, ref_range, flag) VALUES (%s,%s,%s,%s,%s,%s)",
-            (name, test_name, result, unit, ref_range, flag)
-        )
-        st.success("✅ Record inserted successfully!")
-
-# --- Search by Name + Date Range ---
-st.header("🔍 Search by Name and Date Range")
-search_name = st.text_input("Enter Patient Name")
-start_date = st.date_input("Start Date")
-end_date = st.date_input("End Date")
-if st.button("Search Records"):
-    rows = run_query(
-        "SELECT * FROM blood_reports WHERE name=%s AND timestamp BETWEEN %s AND %s",
-        (search_name, start_date, end_date),
-        fetch=True
-    )
-    st.write(rows)
-
-# --- Display All Records ---
-st.header("📋 All Records")
-if st.button("Show All Records"):
-    rows = run_query("SELECT * FROM blood_reports", fetch=True)
-    st.write(rows)
-
 # --- RAG Analysis ---
 st.header("🧠 RAG: Abnormal Report Analysis & Recommendations")
+
+# Add these new imports at the top (near other langchain imports)
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI          # ← better than old OpenAI llm
 
 if st.button("Run RAG Analysis"):
     # Fetch all records
     rows = run_query("SELECT * FROM blood_reports", fetch=True)
+    
+    if not rows:
+        st.warning("No records found in the database.")
+        st.stop()
 
     # Convert rows into text docs
     docs = []
@@ -87,14 +24,39 @@ if st.button("Run RAG Analysis"):
     # Build FAISS vector store
     embeddings = OpenAIEmbeddings(openai_api_key=st.secrets["openai"]["api_key"])
     vectorstore = FAISS.from_texts(docs, embeddings)
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 6})   # ← you can tune k
 
-    # Create RAG chain
-    llm = OpenAI(openai_api_key=st.secrets["openai"]["api_key"])
-    qa = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
+    # Modern LLM (recommended over old OpenAI class)
+    llm = ChatOpenAI(
+        model="gpt-4o-mini",                # or gpt-4o, gpt-3.5-turbo, etc.
+        openai_api_key=st.secrets["openai"]["api_key"],
+        temperature=0.3
+    )
 
-    # Ask the model to find abnormal reports
-    query = "Identify abnormal blood test reports and provide medical recommendations."
-    answer = qa.run(query)
+    # Define a clear prompt (very important!)
+    system_prompt = (
+        "You are a helpful medical AI assistant analyzing blood test results.\n"
+        "Use the following patient blood report excerpts to identify abnormal values "
+        "(those marked with flag or clearly outside reference range) and give reasonable "
+        "general recommendations.\n"
+        "Do NOT give definitive medical advice — always recommend consulting a doctor.\n\n"
+        "{context}"
+    )
 
-    st.subheader("🔎 AI Recommendations")
-    st.write(answer)
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            ("human", "{input}"),
+        ]
+    )
+
+    # Create chains
+    question_answer_chain = create_stuff_documents_chain(llm, prompt)
+    rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+
+    # Run
+    query = "Identify abnormal blood test reports and provide general recommendations."
+    result = rag_chain.invoke({"input": query})
+
+    st.subheader("🔎 AI Analysis & Recommendations")
+    st.markdown(result["answer"])
