@@ -5,3 +5,6 @@ langchain-community==0.0.33
 langchain-openai==0.0.8
 faiss-cpu
 openai
+
+
+
