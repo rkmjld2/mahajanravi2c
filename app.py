@@ -125,17 +125,22 @@ if st.button("Run RAG Analysis (may take 5–20 seconds)"):
                     f"Flag: {r['flag']} | Date: {r.get('timestamp', '—')}"
                 )
 
-            # Embed + FAISS (still using OpenAI embeddings – Groq has none)
-            embeddings = OpenAIEmbeddings(openai_api_key=st.secrets["openai"]["api_key"])
-            vectorstore = FAISS.from_texts(texts, embeddings)
-            retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2",
+    model_kwargs={"device": "cpu"},           # "cuda" if GPU available (rare on Streamlit Cloud)
+    encode_kwargs={"normalize_embeddings": True},
+)
 
-            # LLM = Groq (fast & cheap)
-            llm = ChatGroq(
-                model="llama-3.1-70b-versatile",          # or "mixtral-8x7b-32768", "llama3-70b-8192"
-                temperature=0.25,
-                groq_api_key=st.secrets["groq"]["api_key"],
-            )
+vectorstore = FAISS.from_texts(texts, embeddings)
+retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+
+# LLM = Groq (fast & cheap) – unchanged
+llm = ChatGroq(
+    model="llama-3.1-70b-versatile",          # good balance of speed/quality
+    # or try: "mixtral-8x7b-32768", "llama-3.3-70b-versatile" if available
+    temperature=0.25,
+    groq_api_key=st.secrets["groq"]["api_key"],
+)
 
             # Prompt
             system_prompt = """You are a helpful medical report analyzer.
@@ -161,5 +166,6 @@ Context:
 
             st.subheader("AI Analysis & Recommendations (powered by Groq)")
             st.markdown(result["answer"])
+
 
 
