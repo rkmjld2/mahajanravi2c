@@ -2,8 +2,8 @@ import streamlit as st
 import mysql.connector
 import tempfile
 
-# LangChain imports
-from langchain.chains.retrieval_qa import RetrievalQA
+# LangChain imports (correct for pinned versions)
+from langchain.chains import RetrievalQA
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 
@@ -98,4 +98,5 @@ if st.button("Run RAG Analysis"):
 
     st.subheader("🔎 AI Recommendations")
     st.write(answer)
+
 
