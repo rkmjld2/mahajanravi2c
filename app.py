@@ -204,7 +204,7 @@ Your response MUST include:
 2. For EACH abnormal test: very brief general interpretation.
 3. For EACH abnormal test: common lifestyle recommendations (diet, exercise, habits) AND typical/commonly associated medicines, supplements or treatments (e.g. statins for high cholesterol, iron for low hemoglobin, vitamin D for deficiency, etc.).
 
-VERY IMPORTANT – ALWAYS INCLUDE THIS EXACT DISCLAIMER AT THE BEGINNING AND END OF YOUR RESPONSE:
+VERY IMPORTANT – ALWAYS INCLUDE THIS EXACT DISCLAIMER AT  END OF YOUR RESPONSE:
 "THIS IS GENERAL EDUCATIONAL INFORMATION ONLY – NOT MEDICAL ADVICE, NOT A DIAGNOSIS, NOT A TREATMENT PLAN. 
 DO NOT TAKE ANY MEDICATION OR SUPPLEMENT BASED ON THIS OUTPUT. 
 CONSULT A QUALIFIED DOCTOR FOR PERSONALIZED INTERPRETATION, DIAGNOSIS AND PRESCRIPTION."
@@ -241,3 +241,4 @@ Context (blood reports):
 
             except Exception as e:
                 st.error(f"Error during analysis: {str(e)}")
+
